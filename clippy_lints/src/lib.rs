@@ -18,6 +18,7 @@
 #![warn(rustc::internal)]
 // Disable this rustc lint for now, as it was also done in rustc
 #![allow(rustc::potential_query_instability)]
+#![feature(cfg_target_thread_local)]
 
 // FIXME: switch to something more ergonomic here, once available.
 // (Currently there is no way to opt into sysroot crates without `extern crate`.)
@@ -45,6 +46,7 @@ extern crate rustc_span;
 extern crate rustc_target;
 extern crate rustc_trait_selection;
 extern crate thin_vec;
+extern crate cfg_if;
 
 #[macro_use]
 extern crate clippy_utils;
@@ -1089,9 +1091,15 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
             behavior: pub_underscore_fields_behavior,
         })
     });
-    store.register_late_pass(move |_| {
-        Box::new(thread_local_initializer_can_be_made_const::ThreadLocalInitializerCanBeMadeConst::new(msrv()))
-    });
+
+    cfg_if::cfg_if! {
+        if #[cfg(target_thread_local)] {
+            store.register_late_pass(move |_| {
+                Box::new(thread_local_initializer_can_be_made_const::ThreadLocalInitializerCanBeMadeConst::new(msrv()))
+            });
+        }
+    }
+
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 
